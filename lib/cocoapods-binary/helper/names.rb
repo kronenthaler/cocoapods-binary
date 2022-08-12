@@ -16,63 +16,20 @@
 
 # Tool to transform Pod_name to target efficiently
 module Pod
-    def self.fast_get_targets_for_pod_name(pod_name, targets, cache)
-        pod_name_to_targets_hash = nil
-        if cache.empty?
-            pod_name_to_targets_hash = targets.reduce({}) do |sum, target|
-                array = sum[target.pod_name] || []
-                array << target
-                sum[target.pod_name] = array
-                sum
-            end
-            cache << pod_name_to_targets_hash
-        else
-            pod_name_to_targets_hash = cache.first
-        end
-        
-        pod_name_to_targets_hash[pod_name] || []
+  def self.fast_get_targets_for_pod_name(pod_name, targets, cache)
+    pod_name_to_targets_hash = nil
+    if cache.empty?
+      pod_name_to_targets_hash = targets.reduce({}) do |sum, target|
+        array = sum[target.pod_name] || []
+        array << target
+        sum[target.pod_name] = array
+        sum
+      end
+      cache << pod_name_to_targets_hash
+    else
+      pod_name_to_targets_hash = cache.first
     end
+
+    pod_name_to_targets_hash[pod_name] || []
+  end
 end
-
-
-
-
-
-
-# Target:
-   
-#     def pod_name
-#       root_spec.name
-#     end
-
-#     def name
-# 	    pod_name + #{scope_suffix}
-#     end	
-
-#     def product_module_name
-#       root_spec.module_name
-#     end
-  
-#     def framework_name
-#       "#{product_module_name}.framework"
-#     end
-
-#    def product_name
-#       if requires_frameworks?
-#         framework_name
-#       else
-#         static_library_name
-#       end
-#     end
-
-#     def product_basename
-#       if requires_frameworks?
-#         product_module_name
-#       else
-#         label
-#       end
-#     end
-
-#     def framework_name
-#       "#{product_module_name}.framework"
-#     end
