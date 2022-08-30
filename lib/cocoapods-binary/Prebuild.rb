@@ -106,7 +106,7 @@ module Pod
       Pod::Prebuild.remove_build_dir(sandbox_path)
       targets.each do |target|
         if !target.should_build?
-          UI.puts "Prebuilding #{target.label}"
+          UI.puts "Skipping #{target.label}"
           next
         end
 

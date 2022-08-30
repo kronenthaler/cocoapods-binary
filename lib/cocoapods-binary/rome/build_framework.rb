@@ -25,15 +25,15 @@ def build_for_iosish_platform(sandbox,
   target_label = target.label # name with platform if it's used in multiple platforms
   Pod::UI.puts "Prebuilding #{target_label}..."
 
-  other_options = []
+  other_options = %w[ONLY_ACTIVE_ARCH=NO defines_module=YES SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES SWIFT_SERIALIZE_DEBUGGING_OPTIONS=NO]
   # bitcode enabled
   other_options += ['BITCODE_GENERATION_MODE=bitcode'] if bitcode_enabled
   # make less arch to iphone simulator for faster build
-  custom_build_options_simulator += ['ARCHS=x86_64', 'ONLY_ACTIVE_ARCH=NO'] if simulator == 'iphonesimulator'
+  custom_build_options_simulator += %w[ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO] if simulator == 'iphonesimulator'
 
-  is_succeed, _ = xcodebuild(sandbox, target_label, device, deployment_target, other_options + custom_build_options)
+  is_succeed, _ = xcodebuild(sandbox, target_label, 'Release', device, deployment_target, other_options + custom_build_options)
   exit 1 unless is_succeed
-  is_succeed, _ = xcodebuild(sandbox, target_label, simulator, deployment_target, other_options + custom_build_options_simulator)
+  is_succeed, _ = xcodebuild(sandbox, target_label, 'Debug', simulator, deployment_target, other_options + custom_build_options_simulator)
   exit 1 unless is_succeed
 
   # paths
@@ -113,12 +113,14 @@ def build_for_iosish_platform(sandbox,
 
 end
 
-def xcodebuild(sandbox, target, sdk = 'macosx', deployment_target = nil, other_options = [])
-  args = %W(-project #{sandbox.project_path.realdirpath} -scheme #{target} -configuration #{CONFIGURATION} -sdk #{sdk} )
+def xcodebuild(sandbox, target, configuration, sdk = 'macosx', deployment_target = nil, other_options = [])
+  args = %W(-project #{sandbox.project_path.realdirpath} -scheme #{target} -configuration #{configuration} -sdk #{sdk} -archivePath #{sandbox.root.parent}/build/#{target}-#{sdk}.xcarchive)
   platform = PLATFORMS[sdk]
   args += Fourflusher::SimControl.new.destination(:oldest, platform, deployment_target) unless platform.nil?
   args += other_options
-  log = `xcodebuild #{args.join(" ")} 2>&1`
+  cmd = "xcodebuild archive #{args.join(" ")} 2>&1"
+  Pod::UI.puts "\t#{cmd}"
+  log = `#{cmd}`
   exit_code = $?.exitstatus # Process::Status
   is_succeed = (exit_code == 0)
 

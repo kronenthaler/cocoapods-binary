@@ -6,7 +6,7 @@ module Pod
   class Podfile
     module DSL
 
-      # Enable prebuiding for all pods
+      # Enable prebuilding for all pods
       # it has a lower priority to other binary settings
       def all_binary!
         DSL.prebuild_all = true
@@ -75,7 +75,6 @@ module Pod
 end
 
 Pod::HooksManager.register('cocoapods-binary', :pre_install) do |installer_context|
-
   require_relative 'helper/feature_switches'
   if Pod.is_prebuild_stage
     next
@@ -115,9 +114,9 @@ Pod::HooksManager.register('cocoapods-binary', :pre_install) do |installer_conte
 
   # control features
   Pod.is_prebuild_stage = true
-  Pod::Podfile::DSL.enable_prebuild_patch true # enable sikpping for prebuild targets
+  Pod::Podfile::DSL.enable_prebuild_patch true # enable skipping for prebuild targets
   Pod::Installer.force_disable_integration true # don't integrate targets
-  Pod::Config.force_disable_write_lockfile true # disbale write lock file for perbuild podfile
+  Pod::Config.force_disable_write_lockfile true # disable write lock file for prebuild podfile
   Pod::Installer.disable_install_complete_message true # disable install complete message
 
   # make another custom sandbox
