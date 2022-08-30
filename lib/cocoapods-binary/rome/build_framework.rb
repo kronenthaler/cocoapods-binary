@@ -39,13 +39,8 @@ def build_for_iosish_platform(sandbox,
   # paths
   target_name = target.name # equals target.label, like "AFNeworking-iOS" when AFNetworking is used in multiple platforms.
   module_name = target.product_module_name
-  device_framework_path = "#{build_dir}/#{CONFIGURATION}-#{device}/#{target_name}/#{module_name}.framework"
-  simulator_framework_path = "#{build_dir}/#{CONFIGURATION}-#{simulator}/#{target_name}/#{module_name}.framework"
-  if !File.directory?(device_framework_path)
-    # Newer Xcodes seem to build all in one directory.
-    device_framework_path = "#{build_dir}/#{CONFIGURATION}-#{device}/#{module_name}.framework"
-    simulator_framework_path = "#{build_dir}/#{CONFIGURATION}-#{simulator}/#{module_name}.framework"
-  end
+  device_framework_path = "#{build_dir}/#{target}-#{device}.xcarchive/Products/Library/Frameworks/#{module_name}.framework"
+  simulator_framework_path = "#{build_dir}/#{target}-#{simulator}.xcarchive/Products/Library/Frameworks/#{module_name}.framework"
   output_framework_path = "#{output_path}/#{module_name}.framework"
 
   device_binary = device_framework_path + "/#{module_name}"
@@ -119,7 +114,7 @@ def xcodebuild(sandbox, target, configuration, sdk = 'macosx', deployment_target
   args += Fourflusher::SimControl.new.destination(:oldest, platform, deployment_target) unless platform.nil?
   args += other_options
   cmd = "xcodebuild archive #{args.join(" ")} 2>&1"
-  Pod::UI.puts "\t#{cmd}"
+  Pod::UI.puts_indented "#{cmd}"
   log = `#{cmd}`
   exit_code = $?.exitstatus # Process::Status
   is_succeed = (exit_code == 0)
