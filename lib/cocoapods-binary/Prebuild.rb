@@ -65,7 +65,6 @@ module Pod
       targets = []
 
       if local_manifest != nil
-
         changes = prebuild_pods_changes
         added = changes.added
         changed = changes.changed
@@ -124,7 +123,7 @@ module Pod
         # save the resource paths for later installing
         if target.static_framework? and !target.resource_paths.empty?
           framework_path = output_path + target.framework_name
-          standard_sandbox_path = sandbox.standard_sanbox_path
+          standard_sandbox_path = sandbox.standard_sandbox_path
 
           resources = begin
                         if Pod::VERSION.start_with? "1.5"
@@ -205,6 +204,13 @@ module Pod
         to_delete_files.each do |path|
           path.rmtree if path.exist?
         end
+        # keep a tag of the frameworks that have been prebuilt
+        all_needed_names.each do |pod_name|
+          path = Pathname.new("#{sandbox_path}/#{pod_name}")
+          path.rmtree if path.exist?
+          path.mkdir
+          `touch #{path}/prebuilt`
+        end
       else
         # just remove the tmp files
         path = sandbox.root + 'Manifest.lock.tmp'
@@ -218,6 +224,9 @@ module Pod
       old_method2.bind(self).()
       if Pod::is_prebuild_stage
         self.prebuild_frameworks!
+      else
+        path = Pathname.new("#{self.sandbox.root}/_Prebuild/GeneratedFrameworks")
+        path.rmtree if path.exist?
       end
     end
   end
