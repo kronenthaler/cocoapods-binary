@@ -51,7 +51,6 @@ module Pod
         end
 
         target_names.each do |name|
-
           # symbol link copy all substructure
           real_file_folder = prebuild_sandbox.framework_folder_path_for_target_name(name)
 
@@ -183,8 +182,8 @@ module Pod
         targets.each do |target|
           # the framework_file_path rule is decided when `install_for_prebuild`,
           # as to compatible with older version and be less wordy.
-          framework_file_path = target.framework_name
-          framework_file_path = target.name + "/" + framework_file_path if targets.count > 1
+          framework_file_path = "#{target.name}.xcframework"
+          framework_file_path = "#{target.name}/#{framework_file_path}" if targets.count > 1
           add_vendored_framework(spec, target.platform.name.to_s, framework_file_path)
         end
         # Clean the source files

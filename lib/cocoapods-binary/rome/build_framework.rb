@@ -29,7 +29,7 @@ def build_for_iosish_platform(sandbox,
   # bitcode enabled
   other_options += ['BITCODE_GENERATION_MODE=bitcode'] if bitcode_enabled
   # make less arch to iphone simulator for faster build
-  custom_build_options_simulator += %w[-destination 'generic/platform=iOS Simulator' ONLY_ACTIVE_ARCH=NO] if simulator == 'iphonesimulator'
+  custom_build_options_simulator += %w[ONLY_ACTIVE_ARCH=NO] if simulator == 'iphonesimulator'
 
   is_succeed, _ = xcodebuild(sandbox, target_label, 'Release', device, deployment_target, other_options + custom_build_options)
   exit 1 unless is_succeed
@@ -41,11 +41,30 @@ def build_for_iosish_platform(sandbox,
   module_name = target.product_module_name
   device_framework_path = "#{build_dir}/#{target}-#{device}.xcarchive/Products/Library/Frameworks/#{module_name}.framework"
   simulator_framework_path = "#{build_dir}/#{target}-#{simulator}.xcarchive/Products/Library/Frameworks/#{module_name}.framework"
-  output_framework_path = "#{output_path}/#{module_name}.framework"
+  output_framework_path = "#{output_path}/#{module_name}.xcframework"
 
   device_binary = device_framework_path + "/#{module_name}"
   simulator_binary = simulator_framework_path + "/#{module_name}"
   return unless File.file?(device_binary) && File.file?(simulator_binary)
+
+  cmd = ["xcodebuild", "-create-xcframework",
+         "-framework '#{device_framework_path}'",
+         "-debug-symbols '#{build_dir}/#{target}-#{device}.xcarchive/dSYMs/#{module_name}.framework.dSYM'",
+         "$(find '#{build_dir}/#{target}-#{device}.xcarchive/BCSymbolMaps' -name '*.bcsymbolmap' | xargs -I{} echo ' -debug-symbols {}')",
+         "-framework '#{simulator_framework_path}'",
+         "-output '#{output_framework_path}'"
+  ].join(' ')
+
+  Pod::UI.puts_indented("#{cmd}")
+  log = `#{cmd} 2>&1`
+  exit_code = $?.exitstatus # Process::Status
+  if (exit_code != 0)
+    Pod::UI.puts_indented(log)
+  end
+
+  if true
+    return
+  end
 
   # the device_lib path is the final output file path
   # combine the binaries
