@@ -171,9 +171,20 @@ module Pod
       end
 
       specs = self.analysis_result.specifications
-      prebuilt_specs = (specs.select do |spec|
+      prebuilt_specs = specs.select do |spec|
         self.prebuild_pod_names.include? spec.root.name
-      end)
+      end
+
+      # xcframeworks combine subspecs into one framework,
+      # filter out the subspecs and leave only one standing
+      unique_specs = Set[]
+      prebuilt_specs.each do |spec|
+        if unique_specs.include? spec.root.name
+          prebuilt_specs.delete(spec)
+        else
+          unique_specs.add(spec.root.name)
+        end
+      end
 
       prebuilt_specs.each do |spec|
         # Use the prebuild frameworks as vendored frameworks
@@ -183,7 +194,6 @@ module Pod
           # the framework_file_path rule is decided when `install_for_prebuild`,
           # as to compatible with older version and be less wordy.
           framework_file_path = "#{target.name}.xcframework"
-          framework_file_path = "#{target.name}/#{framework_file_path}" if targets.count > 1
           add_vendored_framework(spec, target.platform.name.to_s, framework_file_path)
         end
         # Clean the source files
@@ -207,15 +217,12 @@ module Pod
           end
           spec.attributes_hash["resources"] += bundle_names.map { |n| n + ".bundle" }
         end
-
       end
-
     end
 
     # Override the download step to skip download and prepare file in target folder
     old_method = instance_method(:install_source_of_pod)
     define_method(:install_source_of_pod) do |pod_name|
-
       # copy from original
       pod_installer = create_pod_installer(pod_name)
       # \copy from original
@@ -229,30 +236,6 @@ module Pod
       # copy from original
       @installed_specs.concat(pod_installer.specs_by_platform.values.flatten.uniq)
       # \copy from original
-    end
-  end
-end
-
-module Pod
-  module Generator
-    class CopydSYMsScript
-      old_method = instance_method(:generate)
-      define_method(:generate) do
-        script = old_method.bind(self).()
-        script = script.gsub(/-av/, "-r -L -p -t -g -o -D -v")
-      end
-    end
-  end
-end
-
-module Pod
-  module Generator
-    class CopyXCFrameworksScript
-      old_method = instance_method(:script)
-      define_method(:script) do
-        script = old_method.bind(self).()
-        script = script.gsub(/-av/, "-r -L -p -t -g -o -D -v")
-      end
     end
   end
 end
@@ -276,14 +259,13 @@ module Pod
             output_paths_by_config = {}
 
             xcframeworks = target.xcframeworks.values.flatten
-
             if use_input_output_paths? && !xcframeworks.empty?
               input_file_list_path = target.copy_xcframeworks_script_input_files_path
               input_file_list_relative_path = "${PODS_ROOT}/#{input_file_list_path.relative_path_from(target.sandbox.root)}"
               input_paths_key = UserProjectIntegrator::TargetIntegrator::XCFileListConfigKey.new(input_file_list_path, input_file_list_relative_path)
               input_paths = input_paths_by_config[input_paths_key] = []
 
-              framework_paths = xcframeworks.map { |xcf| "${PODS_ROOT}/#{xcf.path.relative_path_from(target.sandbox.root)}" }
+              framework_paths = xcframeworks.map { |xcf| "${PODS_ROOT}/#{xcf.path.relative_path_from(target.sandbox.root)}" }.uniq
               input_paths.concat framework_paths
 
               output_file_list_path = target.copy_xcframeworks_script_output_files_path
@@ -291,7 +273,7 @@ module Pod
               output_paths_key = UserProjectIntegrator::TargetIntegrator::XCFileListConfigKey.new(output_file_list_path, output_file_list_relative_path)
               output_paths_by_config[output_paths_key] = xcframeworks.map do |xcf|
                 "#{Target::BuildSettings::XCFRAMEWORKS_BUILD_DIR_VARIABLE}/#{xcf.name}"
-              end
+              end.uniq
             end
 
             if xcframeworks.empty?

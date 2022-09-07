@@ -74,6 +74,37 @@ module Pod
   end
 end
 
+Pod::HooksManager.register('cocoapods-binary', :post_install) do |installer_context|
+  if Pod.is_prebuild_stage
+    next
+  end
+
+  installer_context.umbrella_targets.each do |target|
+    # TODO:
+    # - repeat for all configs: how do i get all configs
+    # - extract to function and make it prettier
+    if !Pathname.new("#{installer_context.sandbox.root}/Target Support Files/#{target.cocoapods_target_label}/#{target.cocoapods_target_label}-frameworks-Debug-input-files.xcfilelist").exist?
+      next
+    end
+
+    _clean_xcframework_files = -> (root, pod_name, configuration, type) {
+      file_path = "#{root}/Target Support Files/#{pod_name}/#{pod_name}-frameworks-#{configuration}-#{type}-files.xcfilelist"
+      inputs = File.open(file_path)
+      unique_frameworks = inputs.readlines.map(&:chomp).uniq
+      inputs.close()
+      File.open(file_path, "w") { |f|
+        unique_frameworks.each { |framework| f.write "#{framework}\n" }
+      }
+    }
+
+    target.user_targets[0].build_configuration_list.build_configurations.each do |config_object|
+      configuration = config_object.to_s
+      _clean_xcframework_files.call(installer_context.sandbox.root, target.cocoapods_target_label, configuration, 'input')
+      _clean_xcframework_files.call(installer_context.sandbox.root, target.cocoapods_target_label, configuration, 'output')
+    end
+  end
+end
+
 Pod::HooksManager.register('cocoapods-binary', :pre_install) do |installer_context|
   require_relative 'helper/feature_switches'
   if Pod.is_prebuild_stage
